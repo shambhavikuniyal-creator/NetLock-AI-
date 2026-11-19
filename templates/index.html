@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>NetLock Security Dashboard</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="bg-gray-950 text-white min-h-screen">
+
+    <div class="max-w-7xl mx-auto p-6">
+
+        <!-- Header -->
+        <h1 class="text-3xl font-bold text-cyan-400">
+            NETLOCK SECURITY DASHBOARD
+        </h1>
+
+        <p class="text-gray-400 mt-2">
+            Live Network Monitoring System
+        </p>
+
+        <p class="text-green-400 mt-3">
+            ● System Monitoring Active
+        </p>
+
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mt-8">
+
+            <div class="bg-gray-800 p-6 rounded-xl">
+                <h2 class="text-gray-400">Total Packets</h2>
+                <p id="packets" class="text-3xl font-bold mt-3">
+                    0
+                </p>
+            </div>
+
+            <div class="bg-gray-800 p-6 rounded-xl">
+                <h2 class="text-gray-400">Detected Threats</h2>
+                <p id="threats" class="text-3xl font-bold text-red-400 mt-3">
+                    0
+                </p>
+            </div>
+
+            <div class="bg-gray-800 p-6 rounded-xl">
+                <h2 class="text-gray-400">Threat Percentage</h2>
+                <p id="percentage" class="text-3xl font-bold text-yellow-400 mt-3">
+                    0%
+                </p>
+            </div>
+
+            <div class="bg-gray-800 p-6 rounded-xl">
+                <h2 class="text-gray-400">Blocked IPs</h2>
+                <p id="blocked" class="text-3xl font-bold text-red-400 mt-3">
+                    0
+                </p>
+            </div>
+
+            <div class="bg-gray-800 p-6 rounded-xl">
+                <h2 class="text-gray-400">Packet Processing Rate</h2>
+                <p id="rate" class="text-3xl font-bold text-cyan-400 mt-3">
+                    0
+                </p>
+                <p class="text-gray-400 text-sm">Packets / second</p>
+            </div>
+
+        </div>
+
+        <!-- Traffic Chart -->
+        <div class="bg-gray-800 p-6 rounded-xl mt-8">
+
+            <h2 class="text-xl font-bold mb-5">
+                Live Network Traffic
+            </h2>
+
+            <canvas id="trafficChart"></canvas>
+
+        </div>
+
+        <!-- Blocked IP List -->
+        <div class="bg-gray-800 p-6 rounded-xl mt-8">
+
+            <h2 class="text-xl font-bold mb-4">
+                Blocked IP Addresses
+            </h2>
+
+            <ul id="ipList" class="space-y-3">
+                <li class="text-gray-400">Loading...</li>
+            </ul>
+
+        </div>
+
+        <p class="text-center text-gray-500 mt-8">
+            NetLock | Live Cybersecurity Monitoring
+        </p>
+
+    </div>
+
+
+    <script>
+
+        // Create Chart
+        const ctx = document.getElementById("trafficChart");
+
+        const chart = new Chart(ctx, {
+
+            type: "line",
+
+            data: {
+                labels: [],
+                datasets: [
+
+                    {
+                        label: "Total Packets",
+                        data: [],
+                        borderColor: "#22d3ee",
+                        tension: 0.3
+                    },
+
+                    {
+                        label: "Detected Threats",
+                        data: [],
+                        borderColor: "#f87171",
+                        tension: 0.3
+                    }
+
+                ]
+            },
+
+            options: {
+                responsive: true,
+                animation: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: "white" }
+                    },
+                    x: {
+                        ticks: { color: "white" }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: "white" }
+                    }
+                }
+            }
+
+        });
+
+
+        // Fetch live statistics
+        async function updateStats() {
+
+            try {
+
+                const response = await fetch("/api/stats");
+
+                const data = await response.json();
+
+                document.getElementById("packets").innerText =
+                    data.total_packets;
+
+                document.getElementById("threats").innerText =
+                    data.threats;
+
+                document.getElementById("percentage").innerText =
+                    data.threat_percentage + "%";
+
+                document.getElementById("blocked").innerText =
+                    data.blocked_count;
+
+                document.getElementById("rate").innerText =
+                    data.packet_rate;
+
+            } catch (error) {
+                console.error("Statistics error:", error);
+            }
+
+        }
+
+
+        // Fetch blocked IP addresses
+        async function updateBlockedIPs() {
+
+            try {
+
+                const response = await fetch("/api/blocked-ips");
+
+                const data = await response.json();
+
+                const list = document.getElementById("ipList");
+
+                list.replaceChildren();
+
+                if (data.blocked_ips.length === 0) {
+
+                    const item = document.createElement("li");
+                    item.textContent = "No blocked IP addresses";
+                    list.appendChild(item);
+
+                }
+
+                data.blocked_ips.forEach(ip => {
+
+                    const item = document.createElement("li");
+
+                    item.textContent = "Blocked: " + ip;
+
+                    item.className =
+                        "bg-gray-700 p-3 rounded text-red-300";
+
+                    list.appendChild(item);
+
+                });
+
+            } catch (error) {
+                console.error("IP list error:", error);
+            }
+
+        }
+
+
+        // Update traffic graph
+        async function updateChart() {
+
+            try {
+
+                const response = await fetch("/api/traffic");
+
+                const data = await response.json();
+
+                chart.data.labels = data.history.map(
+                    item => item.time
+                );
+
+                chart.data.datasets[0].data = data.history.map(
+                    item => item.packets
+                );
+
+                chart.data.datasets[1].data = data.history.map(
+                    item => item.threats
+                );
+
+                chart.update();
+
+            } catch (error) {
+                console.error("Chart error:", error);
+            }
+
+        }
+
+
+        // Automatically refresh dashboard
+        async function refreshDashboard() {
+
+            await Promise.all([
+                updateStats(),
+                updateBlockedIPs(),
+                updateChart()
+            ]);
+
+        }
+
+        refreshDashboard();
+
+        setInterval(refreshDashboard, 2000);
+
+    </script>
+
+</body>
+</html>

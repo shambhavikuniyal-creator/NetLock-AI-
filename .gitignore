@@ -2,4 +2,10 @@
 __pycache__/
 *.dll
 *.so
-*.pkl
+*.py[cod]
+*.egg-info/
+venv/
+env/
+*.exe
+*.o
+*.obj
